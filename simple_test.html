@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>简单测试</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #1a1a2e; color: #eee; }
+    .test { margin: 20px 0; padding: 15px; background: #16213e; border: 1px solid #0f3460; }
+    .success { color: #4ade80; }
+    .error { color: #f87171; }
+    button { padding: 10px 20px; background: #4f46e5; color: white; border: none; cursor: pointer; }
+    button:hover { background: #4338ca; }
+    pre {
+      background: #0f172a;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <h1>VisionLearner API 简单测试</h1>
+
+  <div class="test">
+    <h2>1. 测试服务器连接</h2>
+    <button onclick="testConnection()">测试连接</button>
+    <pre id="result1">点击按钮测试...</pre>
+  </div>
+
+  <div class="test">
+    <h2>2. 测试获取目标列表</h2>
+    <button onclick="testGoals()">获取目标</button>
+    <pre id="result2">点击按钮测试...</pre>
+  </div>
+
+  <div class="test">
+    <h2>3. 测试删除目标</h2>
+    <input type="text" id="goalId" placeholder="输入目标ID" style="padding: 8px; width: 300px;">
+    <button onclick="deleteGoal()">删除</button>
+    <pre id="result3">输入目标ID后点击删除...</pre>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:5000/api';
+
+    async function testConnection() {
+      const result = document.getElementById('result1');
+      result.textContent = '测试中...';
+
+      try {
+        const res = await fetch(`${API_BASE}/status`);
+        console.log('Status:', res.status);
+
+        if (res.ok) {
+          const data = await res.json();
+          result.innerHTML = `<span class="success">✓ 连接成功</span>\n${JSON.stringify(data, null, 2)}`;
+        } else {
+          result.innerHTML = `<span class="error">✗ HTTP ${res.status}</span>\n${await res.text()}`;
+        }
+      } catch (e) {
+        result.innerHTML = `<span class="error">✗ 错误: ${e.message}</span>\n\n可能原因:\n1. 服务器未启动\n2. 端口错误\n3. CORS 被阻止`;
+        console.error(e);
+      }
+    }
+
+    async function testGoals() {
+      const result = document.getElementById('result2');
+      result.textContent = '获取中...';
+
+      try {
+        const res = await fetch(`${API_BASE}/goals`);
+
+        if (res.ok) {
+          const data = await res.json();
+          result.innerHTML = `<span class="success">✓ 获取成功 (${data.length} 个目标)</span>\n\n` +
+            data.map((g, i) => `${i+1}. ${g.description} [${g.id.substring(0, 20)}...]`).join('\n');
+        } else {
+          result.innerHTML = `<span class="error">✗ HTTP ${res.status}</span>\n${await res.text()}`;
+        }
+      } catch (e) {
+        result.innerHTML = `<span class="error">✗ 错误: ${e.message}</span>`;
+        console.error(e);
+      }
+    }
+
+    async function deleteGoal() {
+      const goalId = document.getElementById('goalId').value.trim();
+      const result = document.getElementById('result3');
+
+      if (!goalId) {
+        result.innerHTML = `<span class="error">✗ 请输入目标ID</span>`;
+        return;
+      }
+
+      if (!confirm(`确定删除目标 ${goalId} 吗？`)) {
+        return;
+      }
+
+      result.textContent = '删除中...';
+
+      try {
+        const res = await fetch(`${API_BASE}/goal/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ goal_id: goalId })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok) {
+            result.innerHTML = `<span class="success">✓ 删除成功</span>\n请刷新目标列表查看`;
+          } else {
+            result.innerHTML = `<span class="error">✗ 删除失败</span>`;
+          }
+        } else {
+          result.innerHTML = `<span class="error">✗ HTTP ${res.status}</span>\n${await res.text()}`;
+        }
+      } catch (e) {
+        result.innerHTML = `<span class="error">✗ 错误: ${e.message}</span>`;
+        console.error(e);
+      }
+    }
+  </script>
+</body>
+</html>
