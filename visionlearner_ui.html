@@ -1,0 +1,2256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>VisionLearner</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── 设计语言：深空墨色 + 知识金 + 冰蓝荧光 ─────────────────── */
+:root {
+  --ink:        #0d1117;
+  --ink-2:      #161b22;
+  --ink-3:      #21262d;
+  --ink-4:      #30363d;
+  --line:       #21262d;
+  --gold:       #e6a817;
+  --gold-dim:   #b88a0f;
+  --gold-glow:  rgba(230,168,23,0.15);
+  --ice:        #79c0ff;
+  --ice-dim:    #58a6ff;
+  --ice-glow:   rgba(121,192,255,0.12);
+  --green:      #3fb950;
+  --red:        #f85149;
+  --muted:      #8b949e;
+  --text:       #c9d1d9;
+  --text-bright:#f0f6fc;
+  --panel-w:    420px;
+  --hdr-h:      52px;
+  --radius:     10px;
+  font-size: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--ink); color: var(--text); font-family: 'DM Sans', sans-serif; }
+
+/* ── HEADER ─────────────────────────────────────────────────── */
+#hdr {
+  height: var(--hdr-h);
+  background: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; padding: 0 16px;
+  gap: 12px; position: relative; z-index: 100;
+  box-shadow: 0 1px 0 var(--ink-3);
+}
+.logo {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 700; font-size: 16px;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+  display: flex; align-items: center; gap: 8px;
+}
+.logo-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.85)} }
+
+.hdr-mid { flex: 1; display: flex; align-items: center; justify-content: center; }
+.goal-badge {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--ink-3); border: 1px solid var(--line);
+  border-radius: 20px; padding: 4px 14px; font-size: 13px; color: var(--muted);
+  cursor: pointer; transition: all .2s;
+}
+.goal-badge:hover { border-color: var(--gold-dim); color: var(--text); }
+.goal-badge .g-icon { font-size: 11px; color: var(--gold); }
+
+.hdr-right { display: flex; align-items: center; gap: 8px; }
+.hdr-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: 1px solid transparent; transition: all .2s; user-select: none;
+}
+.hdr-btn.outline { border-color: var(--line); color: var(--muted); background: transparent; }
+.hdr-btn.outline:hover { border-color: var(--ice-dim); color: var(--ice); }
+.hdr-btn.primary { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+.hdr-btn.primary:hover { background: #f0b820; }
+.progress-ring { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.progress-ring canvas { display: block; }
+
+/* ── Model Selector ───────────────────────────────────────────── */
+.model-selector {
+  position: relative;
+  display: flex; align-items: center;
+  margin-right: 8px;
+}
+.model-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--line);
+  background: var(--ink-3); color: var(--muted);
+  transition: all .2s; user-select: none;
+}
+.model-btn:hover { border-color: var(--ice-dim); color: var(--text); }
+.model-btn .current-model { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model-btn .model-indicator {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+}
+.model-dropdown {
+  position: absolute; top: 100%; right: 0;
+  margin-top: 4px;
+  background: var(--ink-3); border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  min-width: 220px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  display: none; z-index: 200;
+}
+.model-dropdown.show { display: block; }
+.model-option {
+  padding: 8px 10px; border-radius: 4px;
+  cursor: pointer; display: flex; align-items: center; gap: 8px;
+  font-size: 12px; transition: background .15s;
+}
+.model-option:hover { background: var(--ink-4); }
+.model-option.active { background: var(--gold-glow); color: var(--gold); }
+.model-option .opt-indicator {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted);
+}
+.model-option.available .opt-indicator { background: var(--green); }
+.model-option.active .opt-indicator { background: var(--gold); }
+.model-option .opt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model-option .opt-status { font-size: 10px; color: var(--muted); }
+
+/* ── LAYOUT ──────────────────────────────────────────────────── */
+#main {
+  display: flex;
+  height: calc(100vh - var(--hdr-h));
+  overflow: hidden;
+}
+
+/* ── SIDEBAR (left) ───────────────────────────────────────────── */
+#sidebar {
+  width: 220px; min-width: 220px;
+  background: var(--ink-2);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-section { padding: 12px 8px 4px; }
+.sidebar-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+  color: var(--muted); text-transform: uppercase; padding: 0 8px 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; color: var(--muted); transition: all .15s;
+  user-select: none;
+}
+.nav-item:hover { background: var(--ink-3); color: var(--text); }
+.nav-item.active { background: var(--ink-3); color: var(--text-bright); }
+.nav-item .ni-icon { width: 16px; text-align: center; font-size: 13px; }
+.nav-item .ni-badge {
+  margin-left: auto; font-size: 11px; padding: 1px 7px;
+  border-radius: 10px; background: var(--ink-4); color: var(--muted);
+}
+.nav-item.active .ni-badge { background: var(--gold-glow); color: var(--gold); }
+
+.sidebar-divider { height: 1px; background: var(--line); margin: 8px 12px; }
+
+.goal-section { margin-bottom: 8px; }
+.goal-section-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all .2s;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.goal-section-header:hover { background: var(--ink-3); }
+.gs-icon { 
+  font-size: 10px; 
+  color: var(--muted);
+  transition: transform .2s;
+}
+.gs-section-header.expanded .gs-icon { transform: rotate(90deg); }
+.gs-title { flex: 1; }
+.gs-count {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--ink-3);
+  color: var(--muted);
+}
+
+.goal-list { padding: 4px 8px; overflow-y: auto; }
+.goal-item {
+  padding: 8px 10px; border-radius: 6px; cursor: pointer;
+  transition: all .15s; margin-bottom: 2px;
+}
+.goal-item:hover { background: var(--ink-3); }
+.goal-item.active { background: var(--ink-3); border-left: 2px solid var(--gold); padding-left: 8px; }
+.goal-title { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.goal-meta { font-size: 11px; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+.goal-pct { color: var(--gold); font-weight: 500; }
+.mini-bar { flex: 1; height: 2px; background: var(--ink-4); border-radius: 1px; overflow: hidden; }
+.mini-bar-fill { height: 100%; background: var(--gold); border-radius: 1px; transition: width 1s; }
+
+/* ── MINDMAP PANEL ───────────────────────────────────────────── */
+#map-panel {
+  flex: 1; position: relative; overflow: hidden;
+  background: var(--ink);
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(230,168,23,0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(121,192,255,0.04) 0%, transparent 45%);
+}
+
+/* Toolbar */
+#map-toolbar {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px;
+  background: var(--ink-2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 4px 8px; z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.tb-btn {
+  padding: 5px 10px; border-radius: 5px; font-size: 12px;
+  color: var(--muted); cursor: pointer; transition: all .15s;
+  user-select: none; border: none; background: transparent;
+  display: flex; align-items: center; gap: 5px;
+}
+.tb-btn:hover { background: var(--ink-3); color: var(--text); }
+.tb-btn.active { color: var(--gold); }
+.tb-sep { width: 1px; height: 16px; background: var(--line); margin: 0 2px; }
+
+/* SVG mindmap */
+#map-svg {
+  width: 100%; height: 100%;
+}
+
+/* Node styles */
+.node-root circle { fill: var(--ink-3); stroke: var(--gold); stroke-width: 2.5; }
+.node-root text { fill: var(--gold); font-family: 'Noto Serif SC', serif; font-weight: 700; }
+.node-l1 circle { fill: var(--ink-3); stroke: var(--ice-dim); stroke-width: 1.5; }
+.node-l1 text { fill: var(--text-bright); }
+.node-l2 circle { fill: var(--ink-2); stroke: var(--ink-4); stroke-width: 1; }
+.node-l2 text { fill: var(--muted); }
+.node-collected circle { stroke: var(--green) !important; }
+.node-collected text { fill: var(--green) !important; }
+.node-active circle { stroke: var(--gold) !important; stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 6px rgba(230,168,23,0.6)) !important; }
+
+.link { fill: none; stroke: var(--ink-4); stroke-width: 1.5; }
+.link-gold { stroke: var(--gold); stroke-width: 1.5; opacity: 0.3; }
+
+/* Status overlay on nodes */
+.node-dot { }
+.node-dot-collected { fill: var(--green); }
+.node-dot-pending { fill: var(--ink-4); }
+.node-dot-active { fill: var(--gold); }
+
+/* Floating node info */
+#node-info {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--ink-2); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 12px 16px;
+  min-width: 280px; max-width: 380px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  transition: all .3s; opacity: 0; pointer-events: none;
+  z-index: 20;
+}
+#node-info.show {
+  opacity: 1; pointer-events: all;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+.ni-title { font-weight: 600; color: var(--text-bright); margin-bottom: 6px; }
+.ni-content { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.ni-tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.ni-tag {
+  font-size: 11px; padding: 2px 8px; border-radius: 4px;
+  background: var(--ink-3); color: var(--muted);
+}
+.ni-tag.collected { background: rgba(63,185,80,0.12); color: var(--green); }
+.ni-tag.pending { background: var(--ink-3); color: var(--muted); }
+.ni-actions {
+  display: block; margin-top: 12px;
+  padding-top: 12px; border-top: 1px solid var(--line);
+}
+.ni-ask-btn {
+  width: 100%; padding: 10px 16px; border-radius: 8px;
+  border: 2px solid var(--gold);
+  background: linear-gradient(135deg, var(--gold), #d4920d);
+  color: var(--ink); font-size: 14px; font-weight: 600;
+  cursor: pointer; text-align: center; transition: all .2s;
+  user-select: none; box-shadow: 0 2px 8px rgba(230,168,23,0.3);
+}
+.ni-ask-btn:hover {
+  background: linear-gradient(135deg, #f0b820, var(--gold));
+  transform: translateY(-2px); box-shadow: 0 4px 12px rgba(230,168,23,0.4);
+}
+.ni-ask-btn:active {
+  transform: translateY(0);
+}
+
+/* ── CHAT PANEL ──────────────────────────────────────────────── */
+#chat-panel {
+  width: var(--panel-w); min-width: var(--panel-w);
+  background: var(--ink-2);
+  border-left: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+#chat-header {
+  padding: 12px 16px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--ink-2);
+}
+.ch-title { font-weight: 600; color: var(--text-bright); font-size: 14px; }
+.ch-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.ch-mode {
+  margin-left: auto; display: flex; gap: 2px;
+  background: var(--ink-3); border-radius: 6px; padding: 3px;
+}
+.ch-mode-btn {
+  padding: 4px 10px; border-radius: 4px; font-size: 11px;
+  color: var(--muted); cursor: pointer; transition: all .15s; user-select: none;
+}
+.ch-mode-btn.active { background: var(--ink-4); color: var(--text-bright); }
+
+#messages {
+  flex: 1; overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+  scroll-behavior: smooth;
+}
+#messages::-webkit-scrollbar { width: 4px; }
+#messages::-webkit-scrollbar-track { background: transparent; }
+#messages::-webkit-scrollbar-thumb { background: var(--ink-4); border-radius: 2px; }
+
+.msg { display: flex; gap: 10px; animation: msgIn .25s ease; }
+@keyframes msgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+.msg.user { flex-direction: row-reverse; }
+.msg-avatar {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 12px;
+}
+.msg.ai .msg-avatar { background: var(--gold-glow); border: 1px solid var(--gold-dim); color: var(--gold); }
+.msg.user .msg-avatar { background: var(--ice-glow); border: 1px solid var(--ice-dim); color: var(--ice); }
+.msg-body { max-width: 82%; }
+.msg-bubble {
+  padding: 10px 13px; border-radius: var(--radius); line-height: 1.6;
+  font-size: 13px; word-break: break-word;
+}
+.msg.ai .msg-bubble {
+  background: var(--ink-3); color: var(--text);
+  border-radius: 2px var(--radius) var(--radius) var(--radius);
+}
+.msg.user .msg-bubble {
+  background: linear-gradient(135deg, var(--ink-3), var(--ink-4));
+  border: 1px solid var(--line);
+  color: var(--text-bright);
+  border-radius: var(--radius) 2px var(--radius) var(--radius);
+}
+.msg-meta { font-size: 10px; color: var(--muted); margin-top: 4px; padding: 0 4px; }
+.msg.user .msg-meta { text-align: right; }
+
+/* Source badge */
+.source-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; padding: 2px 8px; border-radius: 4px;
+  margin-bottom: 5px;
+}
+.source-badge.kb { background: rgba(63,185,80,0.1); color: var(--green); }
+.source-badge.llm { background: rgba(230,168,23,0.1); color: var(--gold); }
+.source-badge.skill { background: rgba(121,192,255,0.1); color: var(--ice); }
+
+/* Answer mode selector */
+.mode-label {
+  flex: 1;
+  min-width: 100px;
+  cursor: pointer;
+  user-select: none;
+}
+.mode-label input {
+  display: none;
+}
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all .2s;
+}
+.mode-label input:checked + .mode-option {
+  background: var(--ink-3);
+  border-color: var(--gold);
+}
+.mode-label:hover .mode-option {
+  background: var(--ink-3);
+}
+.mode-icon {
+  font-size: 18px;
+}
+.mode-text {
+  flex: 1;
+}
+.mode-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.mode-desc {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Character display */
+.char-card {
+  background: var(--ink-2); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 12px;
+  margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+}
+.char-main { font-family: 'Noto Serif SC', serif; font-size: 36px; color: var(--gold); line-height: 1; margin-bottom: 10px; }
+.char-row { display: flex; gap: 8px; margin-bottom: 4px; }
+.char-label { color: var(--muted); min-width: 36px; }
+.char-val { color: var(--text-bright); }
+.char-words { display: flex; flex-wrap: wrap; gap: 4px; }
+.char-word { padding: 2px 7px; background: var(--ink-3); border-radius: 4px; font-size: 11px; color: var(--ice); }
+
+/* Speak button */
+.speak-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  background: var(--ink-4);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .2s;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 0;
+  margin-left: 6px;
+}
+.speak-btn:hover {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  background: var(--line);
+}
+.speak-btn.speaking {
+  border-color: var(--gold);
+  background: rgba(230,168,23,0.15);
+  color: var(--gold);
+  animation: speak-pulse 1s ease-in-out infinite;
+}
+@keyframes speak-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Typing indicator */
+.typing { display: flex; gap: 4px; align-items: center; padding: 12px 14px; }
+.typing-dot {
+  width: 6px; height: 6px; background: var(--muted); border-radius: 50%;
+  animation: typingBounce 1.2s ease infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
+/* ── INPUT ───────────────────────────────────────────────────── */
+#input-area {
+  padding: 12px 14px; border-top: 1px solid var(--line);
+  background: var(--ink-2);
+}
+.input-row {
+  display: flex; align-items: flex-end; gap: 8px;
+  background: var(--ink-3); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 8px 12px;
+  transition: border-color .2s;
+}
+.input-row:focus-within { border-color: var(--gold-dim); }
+
+/* File upload button */
+.file-upload-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  background: var(--ink-4);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s;
+  color: var(--muted);
+  font-size: 18px;
+}
+.file-upload-btn:hover {
+  border-color: var(--ice-dim);
+  color: var(--ice);
+  background: var(--line);
+}
+.file-upload-btn svg {
+  width: 20px; height: 20px;
+}
+#file-input {
+  display: none;
+}
+
+/* Voice recording button */
+.voice-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  background: var(--ink-4);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s;
+  color: var(--muted);
+  font-size: 18px;
+  position: relative;
+}
+.voice-btn:hover {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  background: var(--line);
+}
+.voice-btn.recording {
+  border-color: var(--red);
+  background: rgba(248,81,73,0.15);
+  color: var(--red);
+  animation: recording-pulse 1.5s ease-in-out infinite;
+}
+@keyframes recording-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(248,81,73,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(248,81,73,0); }
+}
+.voice-btn svg {
+  width: 20px; height: 20px;
+}
+
+/* Recording status indicator */
+.recording-status {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--red);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.voice-btn.recording .recording-status {
+  opacity: 1;
+}
+
+/* File preview */
+.file-preview {
+  display: none;
+  padding: 8px 12px;
+  background: var(--ink-4);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 1px solid var(--line);
+}
+.file-preview.show { display: flex; }
+.file-preview-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.file-preview-name {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+.file-preview-remove {
+  cursor: pointer;
+  color: var(--red);
+  font-size: 14px;
+  padding: 4px;
+}
+.file-preview-remove:hover { opacity: 0.7; }
+.input-row:focus-within { border-color: var(--gold-dim); }
+#chat-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text-bright); font-size: 13px; font-family: inherit;
+  resize: none; max-height: 100px; min-height: 20px; line-height: 1.5;
+}
+#chat-input::placeholder { color: var(--muted); }
+#chat-input::-webkit-scrollbar { width: 3px; }
+#send-btn {
+  width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0;
+  background: var(--gold); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+#send-btn:hover { background: #f0b820; transform: scale(1.05); }
+#send-btn svg { width: 14px; height: 14px; fill: var(--ink); }
+
+.input-hints { display: flex; gap: 6px; margin-bottom: 8px; overflow-x: auto; }
+.input-hints::-webkit-scrollbar { display: none; }
+.hint-chip {
+  white-space: nowrap; padding: 4px 10px; border-radius: 14px;
+  border: 1px solid var(--line); font-size: 11px; color: var(--muted);
+  cursor: pointer; transition: all .15s; flex-shrink: 0;
+}
+.hint-chip:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+/* ── SKILLS OVERLAY ──────────────────────────────────────────── */
+#skills-bar {
+  padding: 6px 14px; border-top: 1px solid var(--line);
+  display: flex; gap: 6px; align-items: center; overflow-x: auto;
+  background: var(--ink-2);
+}
+#skills-bar::-webkit-scrollbar { display: none; }
+.skill-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 12px;
+  border: 1px solid var(--line); font-size: 11px; color: var(--muted);
+  cursor: pointer; flex-shrink: 0; transition: all .15s;
+}
+.skill-chip:hover { border-color: var(--ice-dim); color: var(--ice); }
+.skill-chip .sk-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+
+/* ── MOBILE RESPONSIVE ───────────────────────────────────────── */
+#toggle-chat {
+  display: none; position: absolute; right: 16px; bottom: 80px; z-index: 50;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--gold); border: none; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(230,168,23,0.4);
+  align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+/* ── QUIZ MODE ───────────────────────────────────────────────── */
+.quiz-card {
+  background: var(--ink-3); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px;
+  margin-top: 4px;
+}
+.quiz-q { font-size: 15px; color: var(--text-bright); margin-bottom: 12px; }
+.quiz-opts { display: flex; flex-direction: column; gap: 6px; }
+.quiz-opt {
+  padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line);
+  font-size: 13px; cursor: pointer; transition: all .15s; color: var(--text);
+}
+.quiz-opt:hover { border-color: var(--ice-dim); background: var(--ice-glow); }
+.quiz-opt.correct { border-color: var(--green); background: rgba(63,185,80,0.1); color: var(--green); }
+.quiz-opt.wrong { border-color: var(--red); background: rgba(248,81,73,0.1); color: var(--red); }
+
+/* ── STATUS BAR ──────────────────────────────────────────────── */
+#status-bar {
+  position: absolute; bottom: 16px; right: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  pointer-events: none; z-index: 30;
+}
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--ink-2); border: 1px solid var(--line);
+  border-radius: 20px; padding: 4px 12px; font-size: 11px; color: var(--muted);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  animation: slideIn .3s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:none} }
+.status-pill .sp-dot { width: 6px; height: 6px; border-radius: 50%; }
+.status-pill.learning .sp-dot { background: var(--gold); animation: pulse 1s infinite; }
+.status-pill.done .sp-dot { background: var(--green); }
+
+/* Mobile overrides */
+@media (max-width: 768px) {
+  :root { --panel-w: 100vw; }
+  #sidebar { display: none; }
+  #chat-panel { position: absolute; right: 0; top: 0; bottom: 0; transform: translateX(100%); transition: transform .3s ease; z-index: 40; }
+  #chat-panel.open { transform: translateX(0); }
+  #toggle-chat { display: flex; }
+  #map-panel { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    VisionLearner
+  </div>
+
+  <div class="hdr-mid">
+    <div class="goal-badge" onclick="toggleSidebar()">
+      <span class="g-icon">◈</span>
+      <span id="goal-name">选择目标</span>
+      <span style="color:var(--muted);font-size:11px">▾</span>
+    </div>
+  </div>
+
+  <div class="hdr-right">
+    <div class="model-selector">
+      <div class="model-btn" onclick="toggleModelDropdown()" id="model-btn">
+        <div class="model-indicator"></div>
+        <span class="current-model" id="current-model-name">加载中...</span>
+        <span style="font-size:9px;color:var(--muted)">▾</span>
+      </div>
+      <div class="model-dropdown" id="model-dropdown">
+        <div style="font-size:10px;color:var(--muted);padding:4px 10px 6px;">选择AI模型</div>
+        <div id="model-options"></div>
+      </div>
+    </div>
+    <div class="progress-ring" id="progress-display">
+      <canvas id="ring-canvas" width="28" height="28"></canvas>
+      <span id="progress-text">0%</span>
+    </div>
+    <div class="hdr-btn outline" onclick="populateData()">⚡ 批量学习</div>
+    <div class="hdr-btn primary" id="learn-node-btn" onclick="learnSelectedNode()" style="display:none;">
+      ⚡ 学习节点
+    </div>
+    <div class="hdr-btn outline" onclick="showAddNoteModal()">📝 添加知识</div>
+  <div class="hdr-btn primary" onclick="showNewGoalModal()">＋ 新目标</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">导航</div>
+      <div class="nav-item active" onclick="setView('map')">
+        <span class="ni-icon">◎</span> 知识导图
+        <span class="ni-badge">实时</span>
+      </div>
+      <div class="nav-item" onclick="setView('timeline')">
+        <span class="ni-icon">⌬</span> 学习路径
+      </div>
+      <div class="nav-item" onclick="setView('review')">
+        <span class="ni-icon">↻</span> 待复习
+        <span class="ni-badge" id="review-count">7</span>
+      </div>
+      <div class="nav-item" onclick="setView('skills')">
+        <span class="ni-icon">⚙</span> 技能库
+        <span class="ni-badge" id="skill-count">3</span>
+      </div>
+      <div class="nav-item" onclick="window.location.href='/code_analyzer'">
+        <span class="ni-icon">🔍</span> 代码分析器
+        <span class="ni-badge" style="background:var(--gold);color:var(--ink)">新</span>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">学习目标</div>
+    </div>
+    <div class="goal-section">
+      <div class="goal-section-header" onclick="toggleGoalSection('active')">
+        <span class="gs-icon">▶</span>
+        <span class="gs-title">进行中</span>
+        <span class="gs-count" id="active-goal-count">0</span>
+      </div>
+      <div class="goal-list" id="active-goals">
+        <!-- populated by JS -->
+      </div>
+    </div>
+    <div class="goal-section">
+      <div class="goal-section-header" onclick="toggleGoalSection('completed')">
+        <span class="gs-icon">▶</span>
+        <span class="gs-title">已完成</span>
+        <span class="gs-count" id="completed-goal-count">0</span>
+      </div>
+      <div class="goal-list" id="completed-goals" style="display: none;">
+        <!-- populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MINDMAP PANEL -->
+  <div id="map-panel">
+    <div id="map-toolbar">
+      <select id="unit-selector" onchange="loadMindmap(this.value)"
+              style="background:var(--ink-2);color:var(--text);border:1px solid var(--line);
+                     border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;">
+        <option value="">加载中...</option>
+      </select>
+      <div class="tb-sep"></div>
+      <button class="tb-btn active" onclick="setLayout('radial')">◎ 放射</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="setLayout('tree')">⊢ 树形</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="filterNodes('all')">全部</button>
+      <button class="tb-btn" onclick="filterNodes('pending')">未学</button>
+      <button class="tb-btn" onclick="filterNodes('done')">已学</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="resetZoom()">⊡ 重置</button>
+    </div>
+
+    <svg id="map-svg" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <filter id="glow-gold">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow-green">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <g id="map-g" transform="translate(450,300)">
+        <!-- Links layer -->
+        <g id="links-layer"></g>
+        <!-- Nodes layer -->
+        <g id="nodes-layer"></g>
+      </g>
+    </svg>
+
+    <!-- Floating node info -->
+    <div id="node-info">
+      <div class="ni-title" id="ni-title">读音</div>
+      <div class="ni-content" id="ni-content">chǔn（第三声）</div>
+      <div class="ni-tags" id="ni-tags"></div>
+      <div class="ni-actions">
+        <div class="ni-ask-btn" id="ni-ask-btn" onclick="askAboutNode()">↗ 在对话中追问</div>
+      </div>
+    </div>
+
+    <!-- Status pills -->
+    <div id="status-bar"></div>
+  </div>
+
+  <!-- CHAT PANEL -->
+  <div id="chat-panel">
+    <div id="chat-header">
+      <div>
+        <div class="ch-title">AI 知识对话</div>
+        <div class="ch-sub" id="chat-context">当前：— / 今日已问 0 次 · 节省 0 token</div>
+      </div>
+      <div class="ch-mode">
+        <div class="ch-mode-btn active" onclick="setMode('chat')" id="mode-chat">对话</div>
+        <div class="ch-mode-btn" onclick="setMode('quiz')" id="mode-quiz">测验</div>
+      </div>
+    </div>
+
+    <div id="messages">
+      <!-- Welcome -->
+      <div class="msg ai">
+        <div class="msg-avatar">V</div>
+        <div class="msg-body">
+          <div class="msg-bubble">
+            你好！我是 VisionLearner v4.0，一个会学习的 AI 助手。<br><br>
+            OK 提问学习知识，已学过的内容直接从本地回答，不消耗 token。<br><br>
+            点击左侧思维导图的节点，可以快速追问该知识点。<br><br>
+            点击「批量学习」可以自动学习整个知识树。
+          </div>
+          <div class="msg-meta">VisionLearner · 现在</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skills bar -->
+    <div id="skills-bar">
+      <div class="skill-chip" onclick="useSkill('calc')">
+        <div class="sk-dot"></div>计算器
+      </div>
+      <div class="skill-chip" onclick="useSkill('time')">
+        <div class="sk-dot"></div>时间
+      </div>
+      <div class="skill-chip" onclick="useSkill('progress')">
+        <div class="sk-dot"></div>进度
+      </div>
+      <div class="skill-chip" onclick="showAddSkill()" style="border-style:dashed">
+        ＋ 添加技能
+      </div>
+    </div>
+
+    <!-- Input hints -->
+    <div id="input-area">
+      <div class="input-hints" id="hints">
+        <div class="hint-chip" onclick="setInput('它有几画')">它有几画</div>
+        <div class="hint-chip" onclick="setInput('这个字的部首')">这个字的部首</div>
+        <div class="hint-chip" onclick="setInput('怎么记住这个字')">怎么记住</div>
+        <div class="hint-chip" onclick="setInput('给我出一道题')">出一道题</div>
+        <div class="hint-chip" onclick="setInput('查看进度')">查看进度</div>
+      </div>
+
+      <!-- Answer mode selector -->
+      <div style="margin-bottom:10px;padding:8px 12px;background:var(--ink-2);border-radius:6px;border:1px solid var(--line);">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">回答模式</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <label class="mode-label">
+            <input type="radio" name="answer-mode" value="auto" checked onchange="updateModeUI()">
+            <span class="mode-option">
+              <span class="mode-icon">⚡</span>
+              <div class="mode-text">
+                <div class="mode-title">自动模式</div>
+                <div class="mode-desc">智能平衡</div>
+              </div>
+            </span>
+          </label>
+          <label class="mode-label">
+            <input type="radio" name="answer-mode" value="local" onchange="updateModeUI()">
+            <span class="mode-option">
+              <span class="mode-icon">💾</span>
+              <div class="mode-text">
+                <div class="mode-title">本地知识</div>
+                <div class="mode-desc">快速检索</div>
+              </div>
+            </span>
+          </label>
+          <label class="mode-label">
+            <input type="radio" name="answer-mode" value="llm" onchange="updateModeUI()">
+            <span class="mode-option">
+              <span class="mode-icon">🧠</span>
+              <div class="mode-text">
+                <div class="mode-title">大模型学习</div>
+                <div class="mode-desc">详细深入</div>
+              </div>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <input type="file" id="file-input" accept="image/*,audio/*" onchange="handleFileUpload(event)">
+        <div class="file-upload-btn" onclick="document.getElementById('file-input').click()" title="上传图片或音频">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27A2 2 0 0 1 16.92 22h3a2 2 0 0 1 1.57-3.08z"/>
+          </svg>
+        </div>
+        <div class="voice-btn" id="voice-btn" title="按住录音，松手停止">
+          <div class="recording-status">按住录音</div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </div>
+        <textarea id="chat-input" rows="1" placeholder="直接提问，或点击思维导图节点追问…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button id="send-btn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+        </button>
+      </div>
+
+      <!-- File preview -->
+      <div class="file-preview" id="file-preview">
+        <div class="file-preview-info">
+          <span id="file-preview-name"></span>
+        </div>
+        <div class="file-preview-remove" onclick="clearFile()">✕</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile toggle -->
+<button id="toggle-chat" onclick="toggleChat()">💬</button>
+
+<!-- New Goal Modal -->
+<div class="modal-overlay" id="new-goal-modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:all .3s;">
+  <div class="modal" style="background:var(--ink-2);border:1px solid var(--line);border-radius:12px;width:400px;max-width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.5);transform:scale(0.95);transition:all .3s;">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--line);">
+      <div style="font-size:16px;font-weight:600;color:var(--text-bright);">创建新学习目标</div>
+    </div>
+    <div style="padding:20px;">
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">学习目标描述</label>
+      <input type="text" id="goal-input" placeholder="例如：学习100个常用汉字" style="width:100%;padding:10px 14px;background:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:13px;color:var(--text);outline:none;">
+    </div>
+    <div style="padding:16px 20px;border-top:1px solid var(--line);display:flex;gap:12px;justify-content:flex-end;">
+      <button class="hdr-btn outline" onclick="hideNewGoalModal()" style="border:1px solid var(--line);color:var(--muted);background:transparent;">取消</button>
+      <button class="hdr-btn primary" onclick="createNewGoal()" style="background:var(--gold);color:var(--ink);">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Note Modal -->
+<div class="modal-overlay" id="add-note-modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:all .3s;">
+  <div class="modal" style="background:var(--ink-2);border:1px solid var(--line);border-radius:12px;width:420px;max-width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.5);transform:scale(0.95);transition:all .3s;">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--line);">
+      <div style="font-size:16px;font-weight:600;color:var(--text-bright);">添加知识笔记</div>
+    </div>
+    <div style="padding:20px;">
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">学习目标</label>
+        <select id="note-goal-select" style="width:100%;padding:10px 14px;background:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:13px;color:var(--text);outline:none;">
+          <option value="">加载中...</option>
+        </select>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">知识单元名称</label>
+        <input type="text" id="note-unit-input" placeholder="例如：认知革命、记忆的工作原理" style="width:100%;padding:10px 14px;background:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:13px;color:var(--text);outline:none;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">知识标题（可选）</label>
+        <input type="text" id="note-title-input" placeholder="默认：笔记" style="width:100%;padding:10px 14px;background:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:13px;color:var(--text);outline:none;">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;">知识内容</label>
+        <textarea id="note-content-input" rows="5" placeholder="输入你想保存的知识内容、心得、总结..." style="width:100%;padding:10px 14px;background:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:13px;color:var(--text);outline:none;resize:vertical;"></textarea>
+      </div>
+    </div>
+    <div style="padding:16px 20px;border-top:1px solid var(--line);display:flex;gap:12px;justify-content:flex-end;">
+      <button class="hdr-btn outline" onclick="hideAddNoteModal()" style="border:1px solid var(--line);color:var(--muted);background:transparent;">取消</button>
+      <button class="hdr-btn primary" onclick="submitAddNote()" style="background:var(--gold);color:var(--ink);">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = 'http://localhost:5000/api';
+
+// ── STATE ──────────────────────────────────────────────────────
+let selectedNode = null;
+let transform = {x:0, y:0, scale:1};
+let currentGoal = null;
+let currentUnit = '';
+let chatMode = 'chat';
+let msgCount = 0;
+let tokenSaved = 0;
+let currentContext = '';
+let currentView = 'map';
+
+// ── API ───────────────────────────────────────────────────────────
+async function apiCall(endpoint, data = null) {
+  try {
+    const options = {
+      method: data ? 'POST' : 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    };
+    if (data) options.body = JSON.stringify(data);
+    console.log(`API Call: ${API_BASE}${endpoint}`, data ? `(POST: ${JSON.stringify(data).substring(0,100)}...)` : '(GET)');
+    const res = await fetch(`${API_BASE}${endpoint}`, options);
+    if (!res.ok) {
+      console.error(`API Error: ${res.status} ${res.statusText}`);
+      return null;
+    }
+    const result = await res.json();
+    console.log(`API Response: ${endpoint}`, result);
+    return result;
+  } catch (e) {
+    console.error('API error:', e);
+    console.error('Endpoint:', endpoint);
+    console.error('Data:', data);
+    return null;
+  }
+}
+
+// ── INITIALIZATION ───────────────────────────────────────────────
+async function init() {
+  await loadGoals();
+  loadProgress();
+  await loadCurrentModel();
+  await loadAvailableModels();
+  if (currentGoal) {
+    loadMindmap();
+  }
+  drawRing(0);
+}
+
+// ── MODEL MANAGEMENT ─────────────────────────────────────────────
+let currentModel = null;
+let availableModels = [];
+
+async function loadCurrentModel() {
+  const data = await apiCall('/models/current');
+  if (data && data.provider) {
+    currentModel = data;
+    updateModelDisplay();
+  }
+}
+
+async function loadAvailableModels() {
+  const data = await apiCall('/models/available');
+  if (data && data.providers) {
+    availableModels = data.providers;
+    renderModelOptions();
+  }
+}
+
+function updateModelDisplay() {
+  if (currentModel) {
+    const nameMap = {
+      'doubao': '豆包',
+      'deepseek': 'DeepSeek',
+      'spark': '讯飞星火',
+      'ollama': 'Ollama',
+      'groq': 'Groq',
+      'gemini': 'Gemini',
+      'openrouter': 'OpenRouter',
+      'siliconflow': '硅基流动',
+      'openai': 'OpenAI'
+    };
+    const display = nameMap[currentModel.provider] || currentModel.provider;
+    document.getElementById('current-model-name').textContent = display;
+  }
+}
+
+function renderModelOptions() {
+  const container = document.getElementById('model-options');
+  if (!container) return;
+
+  const nameMap = {
+    'doubao': '豆包',
+    'deepseek': 'DeepSeek',
+    'spark': '讯飞星火',
+    'ollama': 'Ollama',
+    'groq': 'Groq',
+    'gemini': 'Gemini',
+    'openrouter': 'OpenRouter',
+    'siliconflow': '硅基流动',
+    'openai': 'OpenAI'
+  };
+
+  // 排序：已配置的在前，然后按优先级排序
+  const priorityOrder = ['spark', 'doubao', 'deepseek', 'ollama', 'groq', 'gemini', 'openrouter', 'siliconflow', 'openai'];
+  const sortedModels = [...availableModels].sort((a, b) => {
+    const aPriority = priorityOrder.indexOf(a.name);
+    const bPriority = priorityOrder.indexOf(b.name);
+    if (aPriority === -1 && bPriority === -1) return 0;
+    if (aPriority === -1) return 1;
+    if (bPriority === -1) return -1;
+    return aPriority - bPriority;
+  });
+
+  const optionsHtml = sortedModels.map(p => {
+    const isActive = currentModel && currentModel.provider === p.name;
+    const isAvailable = p.available;
+    const displayName = nameMap[p.name] || p.display_name;
+    const statusText = isAvailable ? '可用' : '未配置';
+
+    // 对于 Ollama,不传递 model 参数,让后端自动检测已安装的模型
+    const modelParam = (p.name === 'ollama') ? '' : `, '${p.default_model}'`;
+
+    return `
+      <div class="model-option ${isAvailable ? 'available' : ''} ${isActive ? 'active' : ''}"
+           onclick="${isAvailable ? `switchModel('${p.name}'${modelParam})` : ''}"
+           style="${!isAvailable ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+        <div class="opt-indicator"></div>
+        <div class="opt-name" title="${p.display_name}">
+          <div>${displayName}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">${p.default_model}</div>
+        </div>
+        <div class="opt-status">${statusText}</div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = optionsHtml;
+}
+
+async function switchModel(provider, model = null) {
+  const result = await apiCall('/models/switch', { provider: provider, model: model });
+  if (result && result.ok) {
+    currentModel = {
+      provider: result.provider,
+      model: result.model,
+      display_name: result.display_name
+    };
+    updateModelDisplay();
+    renderModelOptions();
+    toggleModelDropdown();
+
+    const nameMap = {
+      'doubao': '豆包',
+      'deepseek': 'DeepSeek',
+      'spark': '讯飞星火',
+      'ollama': 'Ollama',
+      'groq': 'Groq',
+      'gemini': 'Gemini',
+      'openrouter': 'OpenRouter',
+      'siliconflow': '硅基流动',
+      'openai': 'OpenAI'
+    };
+
+    alert(`✓ 已切换到 ${nameMap[provider] || provider} 模型`);
+  } else {
+    alert('✗ 切换模型失败');
+  }
+}
+
+function toggleModelDropdown() {
+  const dropdown = document.getElementById('model-dropdown');
+  if (dropdown) {
+    dropdown.classList.toggle('show');
+  }
+}
+
+// 点击外部关闭模型下拉菜单
+document.addEventListener('click', (e) => {
+  const selector = document.querySelector('.model-selector');
+  if (selector && !selector.contains(e.target)) {
+    const dropdown = document.getElementById('model-dropdown');
+    if (dropdown) {
+      dropdown.classList.remove('show');
+    }
+  }
+});
+
+// ── GOAL MANAGEMENT ─────────────────────────────────────────────
+async function loadGoals() {
+  const data = await apiCall('/goals');
+  if (!data) return;
+
+  // 分离进行中和已完成的任务
+  const activeGoals = data.filter(g => g.overall_completion < 1);
+  const completedGoals = data.filter(g => g.overall_completion >= 1);
+
+  // 渲染进行中的任务
+  const activeList = document.getElementById('active-goals');
+  activeList.innerHTML = activeGoals.map(g => `
+    <div class="goal-item ${g.active ? 'active' : ''}" onclick="selectGoal('${g.id}')">
+      <div class="goal-title">${g.description}</div>
+      <div class="goal-meta">
+        <span class="goal-pct">${g.overall_completion ? (g.overall_completion * 100).toFixed(0) + '%' : '未开始'}</span>
+        <div class="mini-bar"><div class="mini-bar-fill" style="width:${g.overall_completion ? g.overall_completion * 100 : 0}%"></div></div>
+      </div>
+    </div>
+  `).join('');
+
+  // 渲染已完成的任务
+  const completedList = document.getElementById('completed-goals');
+  completedList.innerHTML = completedGoals.map(g => `
+    <div class="goal-item ${g.active ? 'active' : ''}" onclick="selectGoal('${g.id}')">
+      <div class="goal-title">${g.description}</div>
+      <div class="goal-meta">
+        <span class="goal-pct" style="color:var(--green)">${(g.overall_completion * 100).toFixed(0)}%</span>
+        <div class="mini-bar"><div class="mini-bar-fill" style="width:${g.overall_completion * 100}%;background:var(--green)"></div></div>
+      </div>
+    </div>
+  `).join('');
+
+  // 更新计数
+  document.getElementById('active-goal-count').textContent = activeGoals.length;
+  document.getElementById('completed-goal-count').textContent = completedGoals.length;
+
+  const active = data.find(g => g.active) || data[0];
+  if (active) {
+    document.getElementById('goal-name').textContent = active.description.substring(0, 20) + '...';
+    currentGoal = active;
+  }
+}
+
+async function selectGoal(goalId) {
+  const result = await apiCall('/goal/select', { goal_id: goalId });
+  if (result && result.ok) {
+    currentGoal = goalId;
+    currentUnit = '';
+    await loadGoals();
+    const goalName = document.querySelector(`.goal-item[onclick*='${goalId}'] .goal-title`);
+    if (goalName) {
+      const name = goalName.textContent;
+      document.getElementById('goal-name').textContent = name.length > 18 ? name.substring(0,18)+'…' : name;
+    }
+    if (currentView === 'map') {
+      await loadMindmap();
+    }
+    addMessage('ai', `OK 已切换到目标：${goalId}`);
+  }
+}
+
+function toggleGoalSection(section) {
+  const header = event.currentTarget;
+  const list = section === 'active' ? 
+    document.getElementById('active-goals') : 
+    document.getElementById('completed-goals');
+  const icon = header.querySelector('.gs-icon');
+  
+  // 切换展开/收起
+  if (list.style.display === 'none') {
+    list.style.display = 'block';
+    icon.style.transform = 'rotate(90deg)';
+  } else {
+    list.style.display = 'none';
+    icon.style.transform = 'rotate(0deg)';
+  }
+}
+
+async function createNewGoal() {
+  const input = document.getElementById('goal-input');
+  const desc = input.value.trim();
+  if (!desc) return;
+
+  addMessage('ai', '正在创建目标...');
+  const result = await apiCall('/goal/new', { description: desc, depth: 3 });
+  hideNewGoalModal();
+  if (result && result.id) {
+    await loadGoals();
+    addMessage('ai', `OK 目标创建成功！知识树已生成，现在可以开始学习了。`);
+    input.value = '';
+    if (currentView === 'map') loadMindmap();
+  }
+}
+
+// ── MINDMAP RENDER ────────────────────────────────────────────
+function calcLayout(node, angle, radius, depth) {
+  node.x = Math.cos(angle) * radius;
+  node.y = Math.sin(angle) * radius;
+  node.depth = depth;
+  if (!node.children || !node.children.length) return;
+  const spread = depth===0 ? Math.PI*2 : Math.PI*0.9;
+  const step = spread / Math.max(node.children.length,1);
+  const startAngle = angle - spread/2 + step/2;
+  const childRadius = depth===0 ? 160 : 90;
+  node.children.forEach((child, i) => {
+    const a = startAngle + i*step;
+    calcLayout(child, a, childRadius, depth+1);
+    child.px = node.x; child.py = node.y;
+  });
+}
+
+function getAllNodes(node, arr=[]) {
+  arr.push(node); (node.children||[]).forEach(c=>getAllNodes(c,arr)); return arr;
+}
+
+function renderMindmap() {
+  if (!mindmapData) return;
+
+  mindmapData.x = 0; mindmapData.y = 0; mindmapData.depth = 0;
+  mindmapData.px = 0; mindmapData.py = 0;
+  calcLayout(mindmapData, 0, 0, 0);
+
+  const nodes = getAllNodes(mindmapData);
+  const linksEl = document.getElementById('links-layer');
+  const nodesEl = document.getElementById('nodes-layer');
+  linksEl.innerHTML = ''; nodesEl.innerHTML = '';
+
+  // Draw links
+  nodes.forEach(n => {
+    if (n.px === undefined || (n.px === 0 && n.py === 0 && n.depth > 0)) return;
+    if (n.depth === 0) return;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const mx = (n.px + n.x)/2;
+    line.setAttribute('d', `M${n.px},${n.py} C${mx},${n.py} ${mx},${n.y} ${n.x},${n.y}`);
+    line.setAttribute('class', 'link' + (n.depth===1?' link-gold':''));
+    linksEl.appendChild(line);
+  });
+
+  // Draw nodes
+  nodes.forEach(n => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    const r = n.depth===0 ? 36 : n.depth===1 ? 28 : 22;
+    const fontSize = n.depth===0 ? 16 : n.depth===1 ? 12 : 11;
+
+    g.setAttribute('transform', `translate(${n.x},${n.y})`);
+    g.style.cursor = 'pointer';
+
+    let cls = ['node-root','node-l1','node-l2'][Math.min(n.depth,2)];
+    if (n.collected) cls += ' node-collected';
+    if (selectedNode && selectedNode.id === n.id) cls += ' node-active';
+    g.setAttribute('class', cls);
+    if (n.depth===0) g.setAttribute('filter','url(#glow-gold)');
+    if (n.collected && n.depth>0) g.setAttribute('filter','url(#glow-green)');
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('r', r);
+    g.appendChild(circle);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('dominant-baseline','central');
+    text.setAttribute('font-size', fontSize);
+    text.setAttribute('font-family', n.depth===0 ? "'Noto Serif SC',serif" : "'DM Sans',sans-serif");
+    text.setAttribute('font-weight', n.depth<=1 ? '600' : '400');
+    text.textContent = n.title;
+    g.appendChild(text);
+
+    // status dot
+    if (n.depth > 0) {
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('cx', r-4); dot.setAttribute('cy', -(r-4));
+      dot.setAttribute('r', 4);
+      dot.setAttribute('fill', n.collected ? '#3fb950' : '#30363d');
+      dot.setAttribute('stroke', '#0d1117'); dot.setAttribute('stroke-width','1.5');
+      g.appendChild(dot);
+    }
+
+    g.addEventListener('click', () => selectNode(n));
+    nodesEl.appendChild(g);
+  });
+}
+
+let mindmapData = null;
+
+async function loadMindmap(unit) {
+  if (unit !== undefined) {
+    currentUnit = unit;
+  }
+  
+  const allUnits = await apiCall('/mindmap/all');
+  if (!allUnits || allUnits.length === 0) return;
+  
+  const selector = document.getElementById('unit-selector');
+  selector.innerHTML = allUnits.map(u => 
+    `<option value="${u.unit}" ${u.unit === currentUnit ? 'selected' : ''}>
+      ${u.unit} (${Math.round(u.pct * 100)}%)
+    </option>`
+  ).join('');
+  
+  if (!currentUnit) {
+    currentUnit = allUnits[0].unit;
+    selector.value = currentUnit;
+  }
+  
+  const params = currentUnit ? `?unit=${encodeURIComponent(currentUnit)}` : '';
+  const data = await apiCall(`/mindmap${params}`);
+
+  if (data && data.id) {
+    mindmapData = data;
+    renderMindmap();
+  }
+}
+
+function selectNode(n) {
+  selectedNode = n;
+  renderMindmap();
+  const info = document.getElementById('node-info');
+  document.getElementById('ni-title').textContent = n.title;
+  document.getElementById('ni-content').textContent = n.collected
+    ? (n.content || '（已收集，内容见对话）')
+    : '⭕ 尚未学习此节点，点击下方按钮立即学习';
+  const tags = document.getElementById('ni-tags');
+  tags.innerHTML = `<span class="ni-tag ${n.collected?'collected':'pending'}">${n.collected?'OK 已学':'未学'}</span>
+    <span class="ni-tag">${['根','一级','二级'][Math.min(n.depth,2)]}节点</span>`;
+  const btn = document.getElementById('ni-ask-btn');
+  if (btn) {
+    btn.textContent = n.collected ? `↗ 深入追问「${n.title}」` : `⚡ 立即学习「${n.title}」`;
+    console.log('按钮已更新:', btn.textContent);
+  } else {
+    console.error('按钮元素未找到！');
+  }
+  info.classList.add('show');
+  console.log('节点信息框已显示');
+
+  // 显示/隐藏顶部学习按钮
+  const learnBtn = document.getElementById('learn-node-btn');
+  if (learnBtn) {
+    if (!n.collected && n.depth > 0) {
+      learnBtn.style.display = 'flex';
+      learnBtn.textContent = `⚡ 学习「${n.title}」`;
+    } else {
+      learnBtn.style.display = 'none';
+    }
+  }
+
+  if (n.collected) updateContext(`${mindmapData ? mindmapData.title : ''} → ${n.title}`);
+}
+
+function learnSelectedNode() {
+  if (!selectedNode || selectedNode.collected) return;
+  const q = selectedNode.collected
+    ? `${mindmapData ? mindmapData.title : ''}的${selectedNode.title}详细说一下`
+    : `${mindmapData ? mindmapData.title : ''}字的${selectedNode.title}是什么`;
+  setInput(q);
+  document.getElementById('chat-input').focus();
+}
+
+function askAboutNode() {
+  if (!selectedNode) return;
+  const q = selectedNode.collected
+    ? `${mindmapData ? mindmapData.title : ''}的${selectedNode.title}详细说一下`
+    : `${mindmapData ? mindmapData.title : ''}字的${selectedNode.title}是什么`;
+  setInput(q);
+  document.getElementById('chat-input').focus();
+}
+
+// ── FILE UPLOAD ─────────────────────────────────────────────
+let uploadedFile = null;
+
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  uploadedFile = file;
+
+  const preview = document.getElementById('file-preview');
+  const nameEl = document.getElementById('file-preview-name');
+  nameEl.textContent = file.name;
+  preview.classList.add('show');
+}
+
+function clearFile() {
+  uploadedFile = null;
+  const preview = document.getElementById('file-preview');
+  preview.classList.remove('show');
+  document.getElementById('file-input').value = '';
+}
+
+// ── VOICE RECORDING ───────────────────────────────────────────
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
+let voiceBtn = null;
+let recordedAudioUrl = null;
+let recordedAudioElement = null;
+
+// 初始化录音功能
+function initVoiceRecording() {
+  voiceBtn = document.getElementById('voice-btn');
+
+  // 检查浏览器支持
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    console.warn('浏览器不支持录音功能');
+    if (voiceBtn) {
+      voiceBtn.style.display = 'none';
+    }
+    return false;
+  }
+
+  // 添加按住录音事件（鼠标）
+  voiceBtn.addEventListener('mousedown', startRecording);
+  voiceBtn.addEventListener('mouseup', stopRecording);
+  voiceBtn.addEventListener('mouseleave', () => {
+    if (isRecording) stopRecording();
+  });
+
+  // 添加按住录音事件（触摸屏）
+  voiceBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    startRecording();
+  });
+  voiceBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    stopRecording();
+  });
+
+  return true;
+}
+
+// 开始录音
+async function startRecording() {
+  if (isRecording) return;
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+
+      console.log('录音完成');
+
+      // 创建音频预览
+      recordedAudioUrl = URL.createObjectURL(audioBlob);
+
+      // 显示录音确认对话框
+      showRecordingPreview(audioBlob);
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    voiceBtn.classList.add('recording');
+    updateRecordingStatus('录音中...');
+    console.log('录音已开始');
+
+  } catch (error) {
+    console.error('启动录音失败:', error);
+    isRecording = false;
+
+    let errorMsg = '录音失败';
+    if (error.name === 'NotAllowedError') {
+      errorMsg = '麦克风权限被拒绝，请在浏览器设置中允许使用麦克风';
+    } else if (error.name === 'NotFoundError') {
+      errorMsg = '未找到麦克风设备';
+    }
+
+    addMessage('ai', `[错误] ${errorMsg}`, 'text');
+  }
+}
+
+// 停止录音
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    isRecording = false;
+    voiceBtn.classList.remove('recording');
+    updateRecordingStatus('按住录音');
+    console.log('录音已停止');
+  }
+}
+
+// 更新录音按钮状态文字
+function updateRecordingStatus(text) {
+  const statusEl = voiceBtn.querySelector('.recording-status');
+  if (statusEl) {
+    statusEl.textContent = text;
+  }
+}
+
+// 显示录音预览和确认对话框
+function showRecordingPreview(audioBlob) {
+  // 清除之前的音频
+  if (recordedAudioElement) {
+    recordedAudioElement.pause();
+    recordedAudioElement = null;
+  }
+  if (recordedAudioUrl) {
+    URL.revokeObjectURL(recordedAudioUrl);
+    recordedAudioUrl = null;
+  }
+
+  // 创建预览音频元素
+  recordedAudioUrl = URL.createObjectURL(audioBlob);
+  recordedAudioElement = new Audio(recordedAudioUrl);
+  recordedAudioElement.controls = true;
+  recordedAudioElement.style.maxWidth = '100%';
+  recordedAudioElement.style.margin = '10px 0';
+
+  // 创建确认对话框
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8); z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+  `;
+
+  const dialog = document.createElement('div');
+  dialog.style.cssText = `
+    background: var(--ink-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 24px;
+    max-width: 90%; width: 400px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+  `;
+
+  dialog.innerHTML = `
+    <div style="color: var(--text-bright); font-size: 18px; font-weight: 600; margin-bottom: 16px;">
+      🎤 录音完成
+    </div>
+    <div style="color: var(--muted); font-size: 13px; margin-bottom: 16px;">
+      请先播放确认录音内容，然后决定是否发送
+    </div>
+    <div id="audio-preview-container"></div>
+    <div style="display: flex; gap: 10px; margin-top: 16px;">
+      <button id="cancel-recording" style="
+        flex: 1; padding: 10px 20px; border-radius: 6px; border: 1px solid var(--line);
+        background: transparent; color: var(--muted); cursor: pointer; font-size: 14px;
+      ">
+        重新录制
+      </button>
+      <button id="confirm-recording" style="
+        flex: 1; padding: 10px 20px; border-radius: 6px; border: none;
+        background: var(--gold); color: var(--ink); cursor: pointer; font-size: 14px;
+        font-weight: 500;
+      ">
+        确认发送
+      </button>
+    </div>
+  `;
+
+  // 添加音频预览
+  const previewContainer = dialog.querySelector('#audio-preview-container');
+  previewContainer.appendChild(recordedAudioElement);
+
+  // 添加到页面
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  // 绑定事件
+  dialog.querySelector('#cancel-recording').onclick = () => {
+    if (recordedAudioElement) {
+      recordedAudioElement.pause();
+    }
+    if (recordedAudioUrl) {
+      URL.revokeObjectURL(recordedAudioUrl);
+    }
+    document.body.removeChild(overlay);
+  };
+
+  dialog.querySelector('#confirm-recording').onclick = async () => {
+    const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+
+    // 设置为待发送文件
+    uploadedFile = audioFile;
+    const preview = document.getElementById('file-preview');
+    const nameEl = document.getElementById('file-preview-name');
+    nameEl.textContent = `录音: ${new Date().toLocaleTimeString()}`;
+    preview.classList.add('show');
+
+    // 关闭对话框
+    document.body.removeChild(overlay);
+
+    // 发送消息
+    await sendMessage();
+  };
+
+  // 点击遮罩层关闭
+  overlay.onclick = (e) => {
+    if (e.target === overlay) {
+      if (recordedAudioElement) {
+        recordedAudioElement.pause();
+      }
+      if (recordedAudioUrl) {
+        URL.revokeObjectURL(recordedAudioUrl);
+      }
+      document.body.removeChild(overlay);
+    }
+  };
+}
+
+// ── TEXT TO SPEECH ─────────────────────────────────────────────
+let currentUtterance = null;
+
+// 清理文本用于朗读（去除markdown符号）
+function cleanTextForSpeaking(text) {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')  // **粗体**
+    .replace(/\*([^*]+)\*/g, '$1')     // *斜体*
+    .replace(/`([^`]+)`/g, '$1')       // `代码`
+    .replace(/```[\s\S]*?```/g, '代码块')  // ```代码块```
+    .replace(/#{1,6}\s/g, '')          // # 标题
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')  // [链接](url)
+    .replace(/- /g, '')                 // - 列表
+    .replace(/\n+/g, ' ')              // 多个换行转空格
+    .trim();
+}
+
+// 朗读文本
+function speakText(btn) {
+  const msgBody = btn.closest('.msg-body');
+  if (!msgBody) return;
+
+  const bubble = msgBody.querySelector('.msg-bubble');
+  if (!bubble) return;
+
+  // 获取纯文本内容
+  let text = bubble.textContent || bubble.innerText || '';
+  text = cleanTextForSpeaking(text);
+
+  if (!text) return;
+
+  // 检查是否正在朗读这条消息
+  const isSpeaking = btn.classList.contains('speaking');
+
+  if (isSpeaking) {
+    // 停止朗读
+    window.speechSynthesis.cancel();
+    btn.classList.remove('speaking');
+    return;
+  }
+
+  // 停止其他朗读
+  window.speechSynthesis.cancel();
+
+  // 移除其他按钮的speaking状态
+  document.querySelectorAll('.speak-btn.speaking').forEach(b => b.classList.remove('speaking'));
+
+  // 创建语音合成
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'zh-CN';
+  utter.rate = 0.9;
+  utter.pitch = 1.0;
+
+  // 开始朗读
+  utter.onstart = () => {
+    btn.classList.add('speaking');
+  };
+
+  utter.onend = () => {
+    btn.classList.remove('speaking');
+  };
+
+  utter.onerror = () => {
+    btn.classList.remove('speaking');
+  };
+
+  window.speechSynthesis.speak(utter);
+}
+
+// 获取最佳中文语音
+function getChineseVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  return voices.find(voice => voice.lang.includes('zh') && voice.name.includes('China')) ||
+         voices.find(voice => voice.lang.includes('zh')) ||
+         voices[0];
+}
+
+// 加载语音列表
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    const voice = getChineseVoice();
+    if (voice) {
+      console.log('使用的语音:', voice.name);
+    }
+  };
+}
+
+async function uploadAndAnalyze() {
+  if (!uploadedFile) return null;
+
+  const formData = new FormData();
+  formData.append('file', uploadedFile);
+
+  try {
+    const response = await fetch(`${API_BASE}/multimodal/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json();
+    clearFile();
+
+    if (result.error) {
+      addMessage('ai', `[错误] ${result.error}`, 'text');
+      return null;
+    }
+
+    return result;
+  } catch (e) {
+    console.error('Upload error:', e);
+    clearFile();
+    addMessage('ai', `[错误] 文件上传失败: ${e.message}`, 'text');
+    return null;
+  }
+}
+
+// ── CHAT ─────────────────────────────────────────────────────
+async function sendMessage() {
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+
+  // 检查是否有文件上传
+  if (uploadedFile) {
+    // 显示文件上传消息
+    const fileType = uploadedFile.type.startsWith('image/') ? '图片' : '音频';
+    addMessage('user', `[${fileType}] ${uploadedFile.name}`, 'text');
+    showTyping();
+
+    // 上传并分析文件
+    const uploadResult = await uploadAndAnalyze();
+    removeTyping();
+
+    if (uploadResult && uploadResult.content) {
+      let response = '';
+
+      if (uploadResult.type === 'image') {
+        response = `图片识别成功！\\n\\n`;
+        if (uploadResult.nodes && uploadResult.nodes.length > 0) {
+          response += `从图片中提取了 ${uploadResult.node_count} 个知识点：\\n\\n`;
+          uploadResult.nodes.forEach((node, idx) => {
+            response += `${idx + 1}. ${node.title}\\n   ${node.summary}\\n\\n`;
+          });
+        }
+        addMessage('ai', response, 'text', {
+          source: { cls: 'llm', text: '[图片识别] · 多模态' }
+        });
+      } else if (uploadResult.type === 'audio') {
+        response = `音频处理完成！\\n\\n`;
+        response += `转录内容：\\n${uploadResult.content}\\n\\n`;
+
+        if (uploadResult.nodes && uploadResult.nodes.length > 0) {
+          response += `提取了 ${uploadResult.node_count} 个知识点：\\n\\n`;
+          uploadResult.nodes.forEach((node, idx) => {
+            response += `${idx + 1}. ${node.title}\\n   ${node.summary}\\n\\n`;
+          });
+        }
+
+        if (uploadResult.info) {
+          response += `\\n提示：${uploadResult.info}`;
+        }
+
+        addMessage('ai', response, 'text', {
+          source: { cls: 'llm', text: '[音频识别] · 多模态' }
+        });
+      } else if (uploadResult.error) {
+        addMessage('ai', `分析失败：${uploadResult.error}`, 'text');
+      }
+    }
+    return;
+  }
+
+  // 如果没有文件，发送普通文本消息
+  if (!text) return;
+
+  // 获取选择的模式
+  const selectedMode = document.querySelector('input[name="answer-mode"]:checked');
+  const mode = selectedMode ? selectedMode.value : 'auto';
+
+  inp.value = ''; inp.style.height = 'auto';
+  addMessage('user', text);
+  showTyping();
+
+  const result = await apiCall('/ask', { message: text, mode });
+  removeTyping();
+
+  if (result) {
+    let sourceInfo;
+    const answerText = result.answer || result.content || '';
+
+    // 根据答案内容标注来源
+    if (answerText.includes('[技能系统]')) {
+      sourceInfo = { cls: 'skill', text: '[技能系统] · 0 token' };
+    } else if (answerText.includes('[本地知识]')) {
+      sourceInfo = { cls: 'kb', text: '[本地知识] · 0 token' };
+    } else if (answerText.includes('[本地知识（向量检索）]')) {
+      sourceInfo = { cls: 'kb', text: '[本地知识（向量检索）] · 0 token' };
+    } else if (answerText.includes('[大模型]')) {
+      sourceInfo = { cls: 'llm', text: '[大模型] · 已保存' };
+    } else if (answerText.includes('[LLM回答]')) {
+      sourceInfo = { cls: 'llm', text: '[LLM回答] · 已保存' };
+    } else {
+      sourceInfo = { cls: 'kb', text: '[本地知识] · 0 token' };
+    }
+
+    addMessage('ai', answerText, 'text', { source: sourceInfo });
+    if (mode === 'llm' || sourceInfo.cls === 'llm') {
+      showStatusPill('Saving to knowledge base...', 'learning');
+      setTimeout(() => showStatusPill('OK Saved to knowledge base', 'done'), 1200);
+      tokenSaved += 200;
+    } else if (sourceInfo.cls === 'kb') {
+      tokenSaved += 180;
+    }
+    updateContext();
+  }
+}
+
+function updateModeUI() {
+  // 更新模式UI显示（可以添加更多交互逻辑）
+  const selectedMode = document.querySelector('input[name="answer-mode"]:checked');
+  if (selectedMode) {
+    const mode = selectedMode.value;
+    const inputArea = document.getElementById('input-area');
+    // 可以根据模式改变输入提示
+    const hints = {
+      'auto': '智能模式：自动选择最佳回答策略',
+      'local': '本地模式：只从知识库检索，快速零token',
+      'llm': '学习模式：调用LLM获取详细答案并保存'
+    };
+    // 可以添加更详细的UI更新
+  }
+}
+
+function addMessage(role, content, type='text', extra={}) {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const avatar = role==='user' ? 'You' : 'V';
+  const now = new Date().toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit'});
+
+  let bubble = '';
+  if (type === 'char') {
+    const d = extra;
+    const words = (d.words||[]).map(w=>`<span class="char-word">${w}</span>`).join('');
+    bubble = `<div class="char-card">
+      <div class="char-main">${d.char}</div>
+      <div class="char-row"><span class="char-label">Pinyin</span><span class="char-val">${d.pinyin}</span></div>
+      <div class="char-row"><span class="char-label">Meaning</span><span class="char-val">${d.meaning}</span></div>
+      <div class="char-row"><span class="char-label">Words</span><div class="char-words">${words}</div></div>
+    </div>`;
+  } else {
+    bubble = content;
+  }
+
+  const sourceBadge = role==='ai' && extra.source
+    ? `<div class="source-badge ${extra.source.cls}">${extra.source.text}</div>` : '';
+
+  // 为AI消息添加朗读按钮
+  const speakBtn = role==='ai' && type!=='char'
+    ? `<button class="speak-btn" onclick="speakText(this)" title="点击朗读">🔊</button>` : '';
+
+  div.innerHTML = `
+    <div class="msg-avatar">${avatar}</div>
+    <div class="msg-body">
+      ${sourceBadge}
+      <div class="msg-bubble">${bubble}</div>
+      <div class="msg-meta">${now}${speakBtn}</div>
+    </div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.id = 'typing-indicator'; div.className = 'msg ai';
+  div.innerHTML = `<div class="msg-avatar">V</div>
+    <div class="msg-body"><div class="msg-bubble"><div class="typing">
+      <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+    </div></div></div>`;
+  msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
+}
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+function updateContext() {
+  document.getElementById('chat-context').textContent =
+    `Today asked ${msgCount} times · saved ${tokenSaved} token`;
+}
+
+// ── QUIZ MODE ───────────────────────────────────────────────────
+let currentQuizAnswer = "";
+
+async function startQuiz() {
+  const result = await apiCall("/quiz/question");
+  if (!result || result.error) {
+    addMessage("ai", "No quiz content available, please learn some knowledge first.");
+    return;
+  }
+  currentQuizAnswer = result.answer;
+  const msgs = document.getElementById("messages");
+  const card = document.createElement("div");
+  card.className = "quiz-card";
+  card.innerHTML = `
+    <div class="quiz-q">${result.question}</div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <input id="quiz-input" style="width:100%;padding:6px 10px;background:var(--ink);border:1px solid var(--line);border-radius:6px;color:var(--text);outline:none;"
+             placeholder="Enter your answer...">
+      <button class="hdr-btn primary" onclick="submitQuiz()" style="background:var(--gold);color:var(--ink);">Submit</button>
+    </div>
+  `;
+  msgs.appendChild(card);
+  msgs.scrollTop = msgs.scrollHeight;
+  document.getElementById("quiz-input")?.focus();
+}
+
+async function submitQuiz() {
+  const input = document.getElementById("quiz-input");
+  if (!input) return;
+  const userAnswer = input.value.trim();
+  if (!userAnswer) return;
+  const result = await apiCall("/quiz/check",
+    { user: userAnswer, answer: currentQuizAnswer });
+  if (!result) return;
+  input.disabled = true;
+  document.querySelector(".quiz-card .hdr-btn")?.remove();
+  if (result.correct) {
+    addMessage("ai", "OK Correct! Answer: " + currentQuizAnswer);
+  } else if (result.partial) {
+    addMessage("ai", "WARN Partial correct. Answer: " + currentQuizAnswer);
+  } else {
+    addMessage("ai", "[ERROR] Wrong. Answer: " + currentQuizAnswer);
+  }
+  setTimeout(startQuiz, 1800);
+}
+
+function setMode(mode) {
+  chatMode = mode;
+  document.querySelectorAll('.ch-mode-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`mode-${mode}`).classList.add('active');
+
+  if (mode === 'quiz') {
+    startQuiz();
+  }
+}
+
+// ── UTILITIES ─────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+function autoResize(el) {
+  el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight,100)+'px';
+}
+function setInput(text) {
+  const inp = document.getElementById('chat-input');
+  inp.value = text; inp.focus(); autoResize(inp);
+}
+
+async function populateData() {
+  const limit = prompt('批量学习：输入要学习的单元数量（0表示全部，默认全部）', '0');
+  if (limit === null) return;
+
+  addMessage('ai', 'Starting batch learning, please wait...');
+  showStatusPill('Learning...', 'learning');
+
+  // 0 或空值表示全部单元
+  const unitLimit = (parseInt(limit) === 0 || !limit) ? null : parseInt(limit) || null;
+  const result = await apiCall('/populate', { limit: unitLimit });
+
+  if (result && result.error) {
+    addMessage('ai', `[ERROR] ${result.error}`);
+  } else if (result) {
+    addMessage('ai', `OK Learning completed! learned ${result.nodes} nodes`);
+    showStatusPill('OK Learning completed', 'done');
+    loadProgress();
+    if (currentView === 'map') loadMindmap();
+  }
+}
+
+async function loadProgress() {
+  console.log('Loading progress...');
+  const data = await apiCall('/progress');
+  if (!data) {
+    console.error('Failed to load progress');
+    return;
+  }
+
+  const pct = (data.overall_completion || 0) * 100;
+  console.log('Progress loaded:', pct.toFixed(1) + '%');
+  drawRing(pct);
+  document.getElementById('progress-text').textContent = Math.round(pct) + '%';
+}
+
+function drawRing(pct) {
+  const c = document.getElementById('ring-canvas');
+  const ctx = c.getContext('2d');
+  const r = 11, cx = 14, cy = 14;
+  ctx.clearRect(0,0,28,28);
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.strokeStyle='#21262d'; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,(Math.PI*2*pct/100)-Math.PI/2);
+  ctx.strokeStyle='#e6a817'; ctx.lineWidth=2.5;
+  ctx.lineCap='round'; ctx.stroke();
+}
+
+function showStatusPill(text, type) {
+  const bar = document.getElementById('status-bar');
+  bar.innerHTML = `<div class="status-pill ${type}"><div class="sp-dot"></div>${text}</div>`;
+  setTimeout(() => { bar.innerHTML = ''; }, 3000);
+}
+
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  event.target.closest('.nav-item').classList.add('active');
+}
+
+function setLayout(l) {}
+function filterNodes(f) {}
+function resetZoom() { renderMindmap(); }
+
+function useSkill(s) {
+  const names = {calc:'100+200 equals', time:'what time is it', progress:'view progress'};
+  setInput(names[s]||'');
+}
+
+function showAddSkill() { setInput('skill add '); }
+function showNewGoalModal() {
+  document.getElementById('new-goal-modal').style.opacity = '1';
+  document.getElementById('new-goal-modal').style.pointerEvents = 'auto';
+  document.getElementById('new-goal-modal').querySelector('.modal').style.transform = 'scale(1)';
+  document.getElementById('goal-input').focus();
+}
+
+function hideNewGoalModal() {
+  document.getElementById('new-goal-modal').style.opacity = '0';
+  document.getElementById('new-goal-modal').style.pointerEvents = 'none';
+  document.getElementById('new-goal-modal').querySelector('.modal').style.transform = 'scale(0.95)';
+}
+
+function showAddNoteModal() {
+  // 加载目标列表到下拉框
+  loadGoalsToSelect();
+  document.getElementById('add-note-modal').style.opacity = '1';
+  document.getElementById('add-note-modal').style.pointerEvents = 'auto';
+  document.getElementById('add-note-modal').querySelector('.modal').style.transform = 'scale(1)';
+
+  // 如果有当前目标，自动选中
+  if (currentGoal && currentGoal.id) {
+    document.getElementById('note-goal-select').value = currentGoal.id;
+  }
+}
+
+function hideAddNoteModal() {
+  document.getElementById('add-note-modal').style.opacity = '0';
+  document.getElementById('add-note-modal').style.pointerEvents = 'none';
+  document.getElementById('add-note-modal').querySelector('.modal').style.transform = 'scale(0.95)';
+  // 清空输入
+  document.getElementById('note-content-input').value = '';
+  document.getElementById('note-title-input').value = '';
+  document.getElementById('note-unit-input').value = '';
+}
+
+async function loadGoalsToSelect() {
+  const data = await apiCall('/goals');
+  if (data && data.goals) {
+    const select = document.getElementById('note-goal-select');
+    select.innerHTML = '';
+    data.goals.forEach(goal => {
+      const option = document.createElement('option');
+      option.value = goal.id;
+      option.textContent = goal.description;
+      select.appendChild(option);
+    });
+  }
+}
+
+async function submitAddNote() {
+  const goalId = document.getElementById('note-goal-select').value;
+  const unit = document.getElementById('note-unit-input').value.trim();
+  const title = document.getElementById('note-title-input').value.trim() || '笔记';
+  const content = document.getElementById('note-content-input').value.trim();
+
+  if (!goalId) {
+    alert('请选择学习目标');
+    return;
+  }
+  if (!unit) {
+    alert('请输入知识单元名称');
+    return;
+  }
+  if (!content) {
+    alert('请输入知识内容');
+    return;
+  }
+
+  const result = await apiCall('/note/add', {
+    goal_id: goalId,
+    unit: unit,
+    node_title: title,
+    content: content
+  });
+
+  if (result && result.ok) {
+    showStatusPill('✓ ' + result.message, 'done');
+    hideAddNoteModal();
+  } else {
+    alert('保存失败：' + (result ? result.error : '未知错误'));
+  }
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  sb.style.display = sb.style.display === 'none' ? 'flex' : 'none';
+}
+
+function toggleChat() {
+  document.getElementById('chat-panel').classList.toggle('open');
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+init();
+console.log('VisionLearner UI initialized');
+
+// 初始化录音按钮
+voiceBtn = document.getElementById('voice-btn');
+initVoiceRecording();
+
+// Close node info on outside click
+document.getElementById('map-svg').addEventListener('click', (e) => {
+  if (e.target.closest('#nodes-layer g')) return;
+  document.getElementById('node-info').classList.remove('show');
+});
+</script>
+</body>
+</html>

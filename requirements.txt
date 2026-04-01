@@ -1,0 +1,28 @@
+# VisionLearner v4.2 依赖
+
+# ── 必须 ──────────────────────────
+requests>=2.31.0          # HTTP 请求
+openai>=1.0.0             # OpenAI SDK（用于豆包多模态API）
+
+# ── Web UI（必须）─────────────
+flask>=3.0.0              # Web 服务器
+flask-cors>=4.0.0         # 跨域资源共享（CORS）
+
+# ── 定时调度 ─────────────
+schedule>=1.2.0           # 轻量定时任务
+
+# ── Telegram Bot（可选）─────────
+python-telegram-bot>=20.0 # Telegram接入（可选）
+
+# ── 原项目算法引擎 ────────────────
+networkx>=3.0             # 知识图谱
+numpy>=1.24               # 数值计算
+
+# ── 环境变量 ─────────────────────
+python-dotenv>=1.0        # .env 文件加载
+
+# ── 向量数据库 ─────────────────────
+chromadb>=0.4.0           # 向量数据库（知识检索）
+
+# ── 快速安装命令 ──────────────────
+# pip install requests flask flask-cors schedule python-dotenv networkx chromadb
