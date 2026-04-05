@@ -41,7 +41,7 @@ echo   [OK] pip 已升级到最新版本
 echo.
 echo [3/6] 安装项目依赖（这可能需要几分钟）...
 
-python -m pip install requests flask flask-cors schedule python-dotenv networkx numpy openai chromadb --quiet
+python -m pip install requests flask flask-cors schedule python-dotenv networkx numpy openai chromadb matplotlib --quiet
 if errorlevel 1 (
     echo   [FAIL] 依赖安装失败，尝试单独安装...
     echo.
